@@ -92,7 +92,7 @@ def interleave_planes(ipixels, apixels, ipsize, apsize):
     for i in range(ipsize):
         out[i:newtotal:newpsize] = ipixels[i:itotal:ipsize]
     for i in range(apsize):
-        out[i+ipsize:newtotal:newpsize] = apixels[i:atotal:apsize]
+        out[i + ipsize:newtotal:newpsize] = apixels[i:atotal:apsize]
     return out
 
 
@@ -356,11 +356,11 @@ class Writer:
             for y in range(ystart, self.height, ystep):
                 if xstart < self.width:
                     if xstep == 1:
-                        offset = y*row_bytes
-                        yield pixels[offset:offset+row_bytes]
+                        offset = y * row_bytes
+                        yield pixels[offset:offset + row_bytes]
                     else:
                         row = array('B')
-                        offset = y*row_bytes + xstart* self.psize
+                        offset = y * row_bytes + xstart * self.psize
                         skip = self.psize * xstep
                         for x in range(xstart, self.width, xstep):
                             row.extend(pixels[offset:offset + self.psize])
@@ -379,7 +379,7 @@ class Writer:
                     continue
                 if xstep == 1:
                     offset = y * row_bytes
-                    yield pixels[offset:offset+row_bytes]
+                    yield pixels[offset:offset + row_bytes]
                 else:
                     row = array('B')
                     # Note we want the ceiling of (self.width - xstart) / xtep
@@ -388,11 +388,11 @@ class Writer:
                     # There's no easier way to set the length of an array
                     row.extend(pixels[0:row_len])
                     offset = y * row_bytes + xstart * self.psize
-                    end_offset = (y+1) * row_bytes
+                    end_offset = (y + 1) * row_bytes
                     skip = self.psize * xstep
                     for i in range(self.psize):
                         row[i:row_len:self.psize] = \
-                            pixels[offset+i:end_offset:skip]
+                            pixels[offset + i:end_offset:skip]
                     yield row
 
 
@@ -406,7 +406,7 @@ class _readable:
         self.offset = 0
 
     def read(self, n):
-        r = buf[offset:offset+n]
+        r = buf[offset:offset + n]
         if isinstance(r, array):
             r = r.tostring()
         offset += n
@@ -431,7 +431,7 @@ class Reader:
 
         """
         if ((_guess is not None and len(kw) != 0) or
-            (_guess is None and len(kw) != 1)):
+                (_guess is None and len(kw) != 1)):
             raise TypeError("Reader() takes exactly 1 argument")
 
         if _guess is not None:
@@ -549,7 +549,7 @@ class Reader:
         else:
             for index in range(0, self.row_bytes, self.psize * xstep):
                 for i in range(self.psize):
-                    x = pixels[offset+i]
+                    x = pixels[offset + i]
                     if index < self.psize:
                         a = 0
                     else:
@@ -575,14 +575,14 @@ class Reader:
         # optimising for xstep == 1
         for index in range(0, self.row_bytes, self.psize * xstep):
             for i in range(self.psize):
-                x = pixels[offset+i]
+                x = pixels[offset + i]
                 if index < self.psize:
                     a = c = 0
-                    b = pixels[b_offset+i]
+                    b = pixels[b_offset + i]
                 else:
-                    a = pixels[a_offset+i]
-                    b = pixels[b_offset+i]
-                    c = pixels[c_offset+i]
+                    a = pixels[a_offset + i]
+                    b = pixels[b_offset + i]
+                    c = pixels[c_offset + i]
                 p = a + b - c
                 pa = abs(p - a)
                 pb = abs(p - b)
@@ -593,7 +593,7 @@ class Reader:
                     pr = b
                 else:
                     pr = c
-                pixels[offset+i] = (x + pr) & 0xff
+                pixels[offset + i] = (x + pr) & 0xff
             offset += self.psize * xstep
             a_offset += self.psize * xstep
             b_offset += self.psize * xstep
@@ -630,7 +630,7 @@ class Reader:
         a = array('B')
         self.pixels = a
         # Make the array big enough
-        temp = scanlines[0:self.width*self.height*self.psize]
+        temp = scanlines[0:self.width * self.height * self.psize]
         a.extend(temp)
         source_offset = 0
         for xstart, ystart, xstep, ystep in _adam7:
@@ -644,7 +644,7 @@ class Reader:
                 source_offset += 1
                 if xstep == 1:
                     offset = y * self.row_bytes
-                    a[offset:offset+self.row_bytes] = \
+                    a[offset:offset + self.row_bytes] = \
                         scanlines[source_offset:source_offset + self.row_bytes]
                     source_offset += self.row_bytes
                 else:
@@ -652,10 +652,10 @@ class Reader:
                     row_len = self.psize * (
                         (self.width - xstart + xstep - 1) / xstep)
                     offset = y * self.row_bytes + xstart * self.psize
-                    end_offset = (y+1) * self.row_bytes
+                    end_offset = (y + 1) * self.row_bytes
                     skip = self.psize * xstep
                     for i in range(self.psize):
-                        a[offset+i:end_offset:skip] = \
+                        a[offset + i:end_offset:skip] = \
                             scanlines[source_offset + i:
                                       source_offset + row_len:
                                       self.psize]
@@ -706,7 +706,7 @@ class Reader:
                 raise Error('Chunk error: ' + e.args[0])
 
             # print >> sys.stderr, tag, len(data)
-            if tag == 'IHDR': # http://www.w3.org/TR/PNG/#11IHDR
+            if tag == 'IHDR':  # http://www.w3.org/TR/PNG/#11IHDR
                 (width, height, bits_per_sample, color_type,
                  compression_method, filter_method,
                  interlaced) = struct.unpack("!2I5B", data)
@@ -743,7 +743,7 @@ class Reader:
                 self.width = width
                 self.height = height
                 self.row_bytes = width * self.psize
-            elif tag == 'IDAT': # http://www.w3.org/TR/PNG/#11IDAT
+            elif tag == 'IDAT':  # http://www.w3.org/TR/PNG/#11IDAT
                 compressed.append(data)
             elif tag == 'bKGD':
                 if greyscale:
@@ -758,7 +758,7 @@ class Reader:
             elif tag == 'gAMA':
                 image_metadata["gamma"] = (
                     struct.unpack("!L", data)[0]) / 100000.0
-            elif tag == 'IEND': # http://www.w3.org/TR/PNG/#11IEND
+            elif tag == 'IEND':  # http://www.w3.org/TR/PNG/#11IEND
                 break
         scanlines = array('B', zlib.decompress(''.join(compressed)))
         if interlaced:
@@ -783,31 +783,31 @@ def test_suite(options):
         return x
 
     def test_gradient_horizontal_rl(x, y):
-        return 1-x
+        return 1 - x
 
     def test_gradient_vertical_tb(x, y):
         return y
 
     def test_gradient_vertical_bt(x, y):
-        return 1-y
+        return 1 - y
 
     def test_radial_tl(x, y):
-        return max(1-math.sqrt(x*x+y*y), 0.0)
+        return max(1 - math.sqrt(x * x + y * y), 0.0)
 
     def test_radial_center(x, y):
-        return test_radial_tl(x-0.5, y-0.5)
+        return test_radial_tl(x - 0.5, y - 0.5)
 
     def test_radial_tr(x, y):
-        return test_radial_tl(1-x, y)
+        return test_radial_tl(1 - x, y)
 
     def test_radial_bl(x, y):
-        return test_radial_tl(x, 1-y)
+        return test_radial_tl(x, 1 - y)
 
     def test_radial_br(x, y):
-        return test_radial_tl(1-x, 1-y)
+        return test_radial_tl(1 - x, 1 - y)
 
     def test_stripe(x, n):
-        return 1.0*(int(x*n) & 1)
+        return 1.0 * (int(x * n) & 1)
 
     def test_stripe_h_2(x, y):
         return test_stripe(x, 2)
@@ -828,13 +828,13 @@ def test_suite(options):
         return test_stripe(y, 10)
 
     def test_stripe_lr_10(x, y):
-        return test_stripe(x+y, 10)
+        return test_stripe(x + y, 10)
 
     def test_stripe_rl_10(x, y):
-        return test_stripe(x-y, 10)
+        return test_stripe(x - y, 10)
 
     def test_checker(x, y, n):
-        return 1.0*((int(x*n) & 1) ^ (int(y*n) & 1))
+        return 1.0 * ((int(x * n) & 1) ^ (int(y * n) & 1))
 
     def test_checker_8(x, y):
         return test_checker(x, y, 8)
@@ -870,7 +870,7 @@ def test_suite(options):
         "CK15": test_checker_15,
         "ZERO": test_zero,
         "ONE": test_one,
-        }
+    }
 
     def test_pattern(width, height, depth, pattern):
         """
@@ -883,17 +883,17 @@ def test_suite(options):
         if depth == 1:
             for y in range(height):
                 for x in range(width):
-                    a.append(int(pfun(float(x)/fw, float(y)/fh) * 255))
+                    a.append(int(pfun(float(x) / fw, float(y) / fh) * 255))
         elif depth == 2:
             for y in range(height):
                 for x in range(width):
-                    v = int(pfun(float(x)/fw, float(y)/fh) * 65535)
+                    v = int(pfun(float(x) / fw, float(y) / fh) * 65535)
                     a.append(v >> 8)
                     a.append(v & 0xff)
         return a
 
     def test_rgba(size=256, depth=1,
-                    red="GTB", green="GLR", blue="RTL", alpha=None):
+                  red="GTB", green="GLR", blue="RTL", alpha=None):
         """
         Create a test image.
         """
@@ -950,7 +950,7 @@ def read_pnm_header(infile, supported='P6'):
             line = line[:sharp]
         header.extend(line.split())
         if len(header) == 3 and header[0] == 'P4':
-            break # PBM doesn't have maxval
+            break  # PBM doesn't have maxval
     if header[0] not in supported:
         raise NotImplementedError('file format %s not supported' % header[0])
     if header[0] != 'P4' and header[3] != '255':

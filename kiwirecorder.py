@@ -1,20 +1,33 @@
 #!/usr/bin/env python
-## -*- python -*-
+# -*- python -*-
 
-import array, codecs, logging, os, struct, sys, time, traceback, copy, threading, os
+import array
+import codecs
+import logging
+import os
+import struct
+import sys
+import time
+import traceback
+import copy
+import threading
+import os
 from optparse import OptionParser
 
 import kiwiclient
 from kiwiworker import KiwiWorker
 
+
 def _write_wav_header(fp, filesize, samplerate, num_channels, is_kiwi_wav):
     fp.write(struct.pack('<4sI4s', b'RIFF', filesize - 8, b'WAVE'))
     bits_per_sample = 16
-    byte_rate       = samplerate * num_channels * bits_per_sample // 8
-    block_align     = num_channels * bits_per_sample // 8
-    fp.write(struct.pack('<4sIHHIIHH', b'fmt ', 16, 1, num_channels, int(samplerate+0.5), byte_rate, block_align, bits_per_sample))
+    byte_rate = samplerate * num_channels * bits_per_sample // 8
+    block_align = num_channels * bits_per_sample // 8
+    fp.write(struct.pack('<4sIHHIIHH', b'fmt ', 16, 1, num_channels, int(
+        samplerate + 0.5), byte_rate, block_align, bits_per_sample))
     if not is_kiwi_wav:
         fp.write(struct.pack('<4sI', b'data', filesize - 12 - 8 - 16 - 8))
+
 
 class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
     def __init__(self, options):
@@ -22,7 +35,7 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
         self._options = options
         self._isWF = False
         freq = options.frequency
-        #print "%s:%s freq=%d" % (options.server_host, options.server_port, freq)
+        # print "%s:%s freq=%d" % (options.server_host, options.server_port, freq)
         self._freq = freq
         self._start_ts = None
         self._start_time = None
@@ -33,10 +46,11 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
         self._nf_samples = 0
         self._nf_index = 0
         self._num_channels = 2 if options.modulation == 'iq' else 1
-        self._last_gps = dict(zip(['last_gps_solution', 'dummy', 'gpssec', 'gpsnsec'], [0,0,0,0]))
+        self._last_gps = dict(
+            zip(['last_gps_solution', 'dummy', 'gpssec', 'gpsnsec'], [0, 0, 0, 0]))
 
     def _setup_rx_params(self):
-        mod    = self._options.modulation
+        mod = self._options.modulation
         lp_cut = self._options.lp_cut
         hp_cut = self._options.hp_cut
         if mod == 'am':
@@ -54,8 +68,8 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
 
     def _process_audio_samples(self, seq, samples, rssi):
         if self._options.quiet is False:
-          sys.stdout.write('\rBlock: %08x, RSSI: %-04d' % (seq, rssi))
-          sys.stdout.flush()
+            sys.stdout.write('\rBlock: %08x, RSSI: %-04d' % (seq, rssi))
+            sys.stdout.flush()
         if self._options.thresh is not None:
             if self._nf_samples < len(self._nf_array) or self._squelch_on_seq is None:
                 self._nf_array[self._nf_index] = rssi
@@ -76,7 +90,8 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
                 self._squelch_on_seq = seq
                 is_open = True
             if self._options.quiet is False:
-                sys.stdout.write(' Median: %-04d Thr: %-04d %s' % (median_nf, rssi_thresh, ("s", "S")[is_open]))
+                sys.stdout.write(' Median: %-04d Thr: %-04d %s' %
+                                 (median_nf, rssi_thresh, ("s", "S")[is_open]))
             if not is_open:
                 return
             if seq > self._squelch_on_seq + 45:
@@ -88,21 +103,22 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
         self._write_samples(samples, {})
 
     def _process_iq_samples(self, seq, samples, rssi, gps):
-        ##print gps['gpsnsec']-self._last_gps['gpsnsec']
+        # print gps['gpsnsec']-self._last_gps['gpsnsec']
         self._last_gps = gps
-        ## convert list of complex numbers into an array
+        # convert list of complex numbers into an array
         s = array.array('h')
         for x in [[y.real, y.imag] for y in samples]:
             s.extend(map(int, x))
         self._write_samples(s, gps)
 
     def _get_output_filename(self):
-        station = '' if self._options.station is None else '_'+ self._options.station
+        station = '' if self._options.station is None else '_' + self._options.station
         if self._options.filename != '':
             filename = '%s%s.wav' % (self._options.filename, station)
         else:
-            ts  = time.strftime('%Y%m%dT%H%M%SZ', self._start_ts)
-            filename = '%s_%d%s_%s.wav' % (ts, int(self._freq * 1000), station, self._options.modulation)
+            ts = time.strftime('%Y%m%dT%H%M%SZ', self._start_ts)
+            filename = '%s_%d%s_%s.wav' % (
+                ts, int(self._freq * 1000), station, self._options.modulation)
         if self._options.dir is not None:
             filename = '%s/%s' % (self._options.dir, filename)
         return filename
@@ -112,26 +128,31 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
             fp.seek(0, os.SEEK_END)
             filesize = fp.tell()
             fp.seek(0, os.SEEK_SET)
-            _write_wav_header(fp, filesize, int(self._sample_rate), self._num_channels, self._options.is_kiwi_wav)
+            _write_wav_header(fp, filesize, int(self._sample_rate),
+                              self._num_channels, self._options.is_kiwi_wav)
 
     def _write_samples(self, samples, *args):
         """Output to a file on the disk."""
         now = time.gmtime()
-        sec_of_day = lambda x: 3600*x.tm_hour + 60*x.tm_min + x.tm_sec
+
+        def sec_of_day(x): return 3600 * x.tm_hour + 60 * x.tm_min + x.tm_sec
         if self._start_ts is None or (self._options.filename == '' and
                                       self._options.dt != 0 and
-                                      sec_of_day(now)/self._options.dt != sec_of_day(self._start_ts)/self._options.dt):
+                                      sec_of_day(now) / self._options.dt != sec_of_day(self._start_ts) / self._options.dt):
             self._start_ts = now
             self._start_time = time.time()
             # Write a static WAV header
             with open(self._get_output_filename(), 'wb') as fp:
-                _write_wav_header(fp, 100, int(self._sample_rate), self._num_channels, self._options.is_kiwi_wav)
+                _write_wav_header(fp, 100, int(self._sample_rate),
+                                  self._num_channels, self._options.is_kiwi_wav)
             print("\nStarted a new file: %s" % self._get_output_filename())
         with open(self._get_output_filename(), 'ab') as fp:
             if self._options.is_kiwi_wav:
                 gps = args[0]
-                logging.info('%s: last_gps_solution=%d gpssec=(%d,%d)' % (self._get_output_filename(), gps['last_gps_solution'], gps['gpssec'], gps['gpsnsec']));
-                fp.write(struct.pack('<4sIBBII', b'kiwi', 10, gps['last_gps_solution'], 0, gps['gpssec'], gps['gpsnsec']))
+                logging.info('%s: last_gps_solution=%d gpssec=(%d,%d)' % (
+                    self._get_output_filename(), gps['last_gps_solution'], gps['gpssec'], gps['gpsnsec']))
+                fp.write(struct.pack('<4sIBBII', b'kiwi', 10,
+                                     gps['last_gps_solution'], 0, gps['gpssec'], gps['gpsnsec']))
                 sample_size = samples.itemsize * len(samples)
                 fp.write(struct.pack('<4sI', b'data', sample_size))
             # TODO: something better than that
@@ -140,7 +161,7 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
 
     def _on_gnss_position(self, pos):
         if os.path.isdir('gnss_pos'):
-            pos_filename = 'gnss_pos/'+self._options.station+'.txt'
+            pos_filename = 'gnss_pos/' + self._options.station + '.txt'
             with open(pos_filename, 'w') as f:
                 f.write("d.%s = struct('coord', [%f,%f], 'host', '%s', 'port', %d);\n"
                         % (self._options.station,
@@ -148,13 +169,14 @@ class KiwiSoundRecorder(kiwiclient.KiwiSDRStream):
                            self._options.server_host,
                            self._options.server_port))
 
+
 class KiwiWaterfallRecorder(kiwiclient.KiwiSDRStream):
     def __init__(self, options):
         super(KiwiWaterfallRecorder, self).__init__()
         self._options = options
         self._isWF = True
         freq = options.frequency
-        #print "%s:%s freq=%d" % (options.server_host, options.server_port, freq)
+        # print "%s:%s freq=%d" % (options.server_host, options.server_port, freq)
         self._freq = freq
         self._start_ts = None
 
@@ -166,12 +188,13 @@ class KiwiWaterfallRecorder(kiwiclient.KiwiSDRStream):
         self._nf_samples = 0
         self._nf_index = 0
         self._num_channels = 2 if options.modulation == 'iq' else 1
-        self._last_gps = dict(zip(['last_gps_solution', 'dummy', 'gpssec', 'gpsnsec'], [0,0,0,0]))
+        self._last_gps = dict(
+            zip(['last_gps_solution', 'dummy', 'gpssec', 'gpsnsec'], [0, 0, 0, 0]))
 
     def _setup_rx_params(self):
         self._set_zoom_start(0, 0)
         self._set_maxdb_mindb(-10, -110)    # needed, but values don't matter
-        #self._set_wf_comp(True)
+        # self._set_wf_comp(True)
         self._set_wf_comp(False)
         self._set_wf_speed(1)   # 1 Hz update
         self.set_inactivity_timeout(0)
@@ -179,7 +202,7 @@ class KiwiWaterfallRecorder(kiwiclient.KiwiSDRStream):
 
     def _process_waterfall_samples(self, seq, samples):
         nbins = len(samples)
-        bins = nbins-1
+        bins = nbins - 1
         max = -1
         min = 256
         bmax = bmin = 0
@@ -194,36 +217,40 @@ class KiwiWaterfallRecorder(kiwiclient.KiwiSDRStream):
             i += 1
         span = 30000
         print("wf samples %d bins %d..%d dB %.1f..%.1f kHz rbw %d kHz"
-              % (nbins, min-255, max-255, span*bmin/bins, span*bmax/bins, span/bins))
+              % (nbins, min - 255, max - 255, span * bmin / bins, span * bmax / bins, span / bins))
+
 
 def options_cross_product(options):
     """build a list of options according to the number of servers specified"""
     def _sel_entry(i, l):
         """if l is a list, return the element with index i, else return l"""
-        return l[min(i, len(l)-1)] if type(l) == list else l
+        return l[min(i, len(l) - 1)] if type(l) == list else l
 
     l = []
-    for i,s in enumerate(options.server_host):
+    for i, s in enumerate(options.server_host):
         opt_single = copy.copy(options)
-        opt_single.server_host = s;
-        opt_single.status = 0;
+        opt_single.server_host = s
+        opt_single.status = 0
         for x in ['server_port', 'password', 'frequency', 'agc_gain', 'filename', 'station', 'user']:
             opt_single.__dict__[x] = _sel_entry(i, opt_single.__dict__[x])
         l.append(opt_single)
     return l
+
 
 def get_comma_separated_args(option, opt, value, parser, fn):
     values = [fn(v.strip()) for v in value.split(',')]
     setattr(parser.values, option.dest, values)
 ##    setattr(parser.values, option.dest, map(fn, value.split(',')))
 
+
 def join_threads(snd, wf):
     [r._event.set() for r in snd]
     [r._event.set() for r in wf]
     [t.join() for t in threading.enumerate() if t is not threading.currentThread()]
 
+
 def main():
-##    sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
+    ##    sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
     parser = OptionParser()
     parser.add_option('--log-level', '--log_level', type='choice',
@@ -349,7 +376,7 @@ def main():
                       help='Also process sound data when in waterfall mode')
 
     (options, unused_args) = parser.parse_args()
-    
+
     logging.basicConfig(level=logging.getLevelName(options.log_level.upper()))
 
     run_event = threading.Event()
@@ -360,22 +387,24 @@ def main():
 
     snd_recorders = []
     if not gopt.waterfall or (gopt.waterfall and gopt.sound):
-        snd_recorders = [KiwiWorker(args=(KiwiSoundRecorder(opt),opt,run_event)) for i,opt in enumerate(options)]
+        snd_recorders = [KiwiWorker(args=(KiwiSoundRecorder(
+            opt), opt, run_event)) for i, opt in enumerate(options)]
 
     wf_recorders = []
     if gopt.waterfall:
-        for i,opt in enumerate(options):
-            wf_recorders.append(KiwiWorker(args=(KiwiWaterfallRecorder(opt),opt,run_event)))
+        for i, opt in enumerate(options):
+            wf_recorders.append(KiwiWorker(
+                args=(KiwiWaterfallRecorder(opt), opt, run_event)))
 
     try:
-        for i,r in enumerate(snd_recorders):
-            if i!=0 and options[i-1].server_host == options[i].server_host:
+        for i, r in enumerate(snd_recorders):
+            if i != 0 and options[i - 1].server_host == options[i].server_host:
                 time.sleep(1)
             r.start()
             logging.info("started sound recorder %d" % i)
 
-        for i,r in enumerate(wf_recorders):
-            if i!=0 and options[i-1].server_host == options[i].server_host:
+        for i, r in enumerate(wf_recorders):
+            if i != 0 and options[i - 1].server_host == options[i].server_host:
                 time.sleep(1)
             r.start()
             logging.info("started waterfall recorder %d" % i)
@@ -393,8 +422,9 @@ def main():
         print("Exception: threads successfully closed")
 
     if gopt.is_kiwi_tdoa:
-      for i,opt in enumerate(options):
-          print("status=%d,%d" % (i, opt.status))
+        for i, opt in enumerate(options):
+            print("status=%d,%d" % (i, opt.status))
+
 
 if __name__ == '__main__':
     main()

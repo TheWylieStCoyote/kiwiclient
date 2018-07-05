@@ -34,8 +34,10 @@ def clamp(x, xmin, xmax):
         x = xmax
     return x
 
+
 def norm_clamp(x, xmin, xmax):
     return (clamp(x, xmin, xmax) - xmin) / (xmax - xmin)
+
 
 def fm_detect(X, prev, shift):
     vals = array.array('f')
@@ -62,6 +64,7 @@ def dft_complex(input):
         w1 += w1d
     return output
 
+
 def idft_complex(input):
     width = len(input)
     width_inv = 1.0 / width
@@ -78,6 +81,7 @@ def idft_complex(input):
         output.append(X * width_inv)
         w1 += w1d
     return output
+
 
 def bitreverse_sort(input):
     output = list(input)
@@ -97,8 +101,10 @@ def bitreverse_sort(input):
 
     return output
 
+
 def log2(x):
     return math.frexp(x)[1] - 1
+
 
 def fft_core(x):
     length = len(x)
@@ -117,23 +123,27 @@ def fft_core(x):
                 x[i] = x[i] + t
             u *= s
 
+
 def fft_complex(input):
     x = bitreverse_sort(input)
     fft_core(x)
     return x
 
+
 def ifft_complex(input):
     "Computes an inverse FFT transform for complex-valued input"
     x = bitreverse_sort(input)
-    x = [ v.conjugate() for v in x ]
+    x = [v.conjugate() for v in x]
     fft_core(x)
     n_inv = 1.0 / len(x)
-    x = [ v.conjugate() * n_inv for v in x ]
+    x = [v.conjugate() * n_inv for v in x]
     return x
+
 
 def power_db(input):
     nf = 1.0 / len(input)
-    return [ 10 * math.log10(abs(x) * nf) for x in input ]
+    return [10 * math.log10(abs(x) * nf) for x in input]
+
 
 def peak_detect(data, thresh):
     data = array.array('f', data)
@@ -157,6 +167,7 @@ def peak_detect(data, thresh):
 class FMDetectorAtan2:
     def __init__(self):
         self._prev = complex(0)
+
     def process(self, samples):
         Y = array.array('f')
         prev = self._prev
@@ -167,12 +178,15 @@ class FMDetectorAtan2:
         self._prev = prev
         return Y
 
+
 class IQConverterDDC:
     """Convert audio samples to IQ: digital down-convert method"""
+
     def __init__(self, fc):
         "fc is the LO frequency divided by the sample rate"
         self._w = cmath.rect(1, -fc * 2 * math.pi)
         self._v = complex(1)
+
     def process(self, samples):
         Y = []
         for x in samples:
@@ -180,11 +194,13 @@ class IQConverterDDC:
             self._v *= self._w
         return Y
 
+
 class IQConverterFFT:
     def __init__(self):
         pass
+
     def process(self, samples):
-        X = fft_complex([ complex(x) for x in samples ])
+        X = fft_complex([complex(x) for x in samples])
         w = 1 + len(X) // 2
         Y = []
         for i in xrange(0, w):
@@ -201,18 +217,23 @@ def interp_hermite(t, p0, p1, p2, p3):
     c3 = 0.5 * (p3 - p0) + 1.5 * (p1 - p2)
     return c0 + (t * (c1 + (t * (c2 + (t * c3)))))
 
+
 class Interpolator:
     def __init__(self, factor):
         self._buffer = array.array('f')
         self._t = 0
         self.set_factor(factor)
+
     def set_factor(self, factor):
         self._dt = factor
+
     def extend(self, samples):
         for x in samples:
             self._buffer.append(float(x))
+
     def __iter__(self):
         return self
+
     def next(self):
         t_int = math.trunc(self._t)
         t_frac = self._t - t_int
@@ -221,6 +242,7 @@ class Interpolator:
             raise StopIteration()
         self._t += self._dt
         return interp_hermite(t_frac, self._buffer[t_int], self._buffer[t_int + 1], self._buffer[t_int + 2], self._buffer[t_int + 3])
+
     def _flush(self):
         t_int = math.trunc(self._t)
         t_new = min(t_int, len(self._buffer))
@@ -228,10 +250,12 @@ class Interpolator:
             self._t -= t_new
             self._buffer = self._buffer[t_new:]
 
+
 class FIRFilter:
     def __init__(self, kernel):
         self._kernel = kernel
         self._buffer = []
+
     def process(self, samples):
         self._buffer.extend(samples)
         Y = []
@@ -239,11 +263,12 @@ class FIRFilter:
         while i + len(self._kernel) < len(self._buffer):
             y = 0
             for j in xrange(len(self._kernel)):
-                y += self._buffer[i+j] * self._kernel[-j-1]
+                y += self._buffer[i + j] * self._kernel[-j - 1]
             Y.append(y)
             i += 1
         self._buffer = self._buffer[i:]
         return Y
+
 
 def generate_sinc(fc, length):
     "Generates a sinc kernel"
@@ -259,39 +284,46 @@ def generate_sinc(fc, length):
             h.append(math.sin(w * x) / x)
     return h
 
+
 def generate_cosine_window_3(length, a, b, c, d):
     w = (2 * math.pi) / (length - 1)
-    return [(a - b * math.cos(w * i) + c * math.cos(2 * w * i) -d * math.cos(3 * w * i)) for i in xrange(0, length)]
+    return [(a - b * math.cos(w * i) + c * math.cos(2 * w * i) - d * math.cos(3 * w * i)) for i in xrange(0, length)]
+
 
 def generate_blackman_nuttall_window(length):
     return generate_cosine_window_3(length, 0.3635819, 0.4891775, 0.1365995, 0.0106411)
 
+
 def apply_window(h, hw):
     if len(h) != len(hw):
         raise ValueError("vectors must have equal lengths")
-    return [ h[i] * hw[i] for i in xrange(len(hw)) ]
+    return [h[i] * hw[i] for i in xrange(len(hw))]
 
 
 def mapper_df_to_intensity(dfs, black_thresh, white_thresh):
     for x in dfs:
         yield norm_clamp(x, black_thresh, white_thresh)
 
+
 class Histogram:
     def __init__(self, bins, xmin, xmax):
         self._min = xmin
         self._max = xmax
-        self._bins = [ 0 for i in xrange(bins) ]
+        self._bins = [0 for i in xrange(bins)]
+
     def put(self, x):
         x = clamp(x, self._min, self._max)
         x = (x - self._min) / (self._max - self._min)
         i = int(x * (len(self._bins) - 1))
         self._bins[i] += 1
+
     def clear(self):
         for i in xrange(len(self._bins)):
             self._bins[i] = 0
+
     def get(self):
         s = 1.0 / sum(self._bins)
-        return [ x * s for x in self._bins ]
+        return [x * s for x in self._bins]
 
 
 # Let them have a name
@@ -301,6 +333,7 @@ RADIOFAX_STARTSTOP_FREQ = 1900
 RADIOFAX_IOC576_START_TONE = 300
 RADIOFAX_IOC288_START_TONE = 675
 RADIOFAX_STOP_TONE = 450
+
 
 class KiwiFax(kiwiclient.KiwiSDRStream):
     def __init__(self, options):
@@ -364,7 +397,8 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
             self.set_mod('iq', -bw, +bw, self._options.frequency)
         else:
             # Tuned to USB (-1900 Hz)
-            self.set_mod('usb', RADIOFAX_BLACK_FREQ - df, RADIOFAX_WHITE_FREQ + df, self._options.frequency - 1.9)
+            self.set_mod('usb', RADIOFAX_BLACK_FREQ - df,
+                         RADIOFAX_WHITE_FREQ + df, self._options.frequency - 1.9)
         # TODO: figure out proper AGC parameters
         self.set_agc(True)
         self.set_inactivity_timeout(0)
@@ -374,10 +408,12 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
     def _on_sample_rate_change(self):
         sample_rate = float(self._sample_rate)
         # Precompute everything that depends on the SR
-        self._iqconverter = IQConverterDDC(RADIOFAX_STARTSTOP_FREQ / sample_rate)
-        filter_width = 450 # Hz
+        self._iqconverter = IQConverterDDC(
+            RADIOFAX_STARTSTOP_FREQ / sample_rate)
+        filter_width = 450  # Hz
         filter_taps = 17
-        self._iqfir = FIRFilter(apply_window(generate_sinc(filter_width / sample_rate, filter_taps), generate_blackman_nuttall_window(filter_taps)))
+        self._iqfir = FIRFilter(apply_window(generate_sinc(
+            filter_width / sample_rate, filter_taps), generate_blackman_nuttall_window(filter_taps)))
         # Start/stop detection params
         resolution = sample_rate / self._ss_window_size
         self._bin_size = resolution
@@ -385,34 +421,41 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
         self._start576_delta = int(RADIOFAX_IOC576_START_TONE / resolution)
         self._start288_delta = int(RADIOFAX_IOC288_START_TONE / resolution)
         self._stop_delta = int(RADIOFAX_STOP_TONE / resolution)
-        self._ss_width = int(0.5 * (RADIOFAX_WHITE_FREQ - RADIOFAX_STARTSTOP_FREQ) / resolution)
-        logging.info("Start/stop center bin: %d; width: %d", self._startstop_center_bin, self._ss_width)
+        self._ss_width = int(
+            0.5 * (RADIOFAX_WHITE_FREQ - RADIOFAX_STARTSTOP_FREQ) / resolution)
+        logging.info("Start/stop center bin: %d; width: %d",
+                     self._startstop_center_bin, self._ss_width)
         logging.info("Start side bins: %d/%d; stop side bins: %d/%d",
-            self._startstop_center_bin+self._start576_delta, self._startstop_center_bin-self._start576_delta,
-            self._startstop_center_bin+self._stop_delta, self._startstop_center_bin-self._stop_delta)
+                     self._startstop_center_bin +
+                     self._start576_delta, self._startstop_center_bin - self._start576_delta,
+                     self._startstop_center_bin + self._stop_delta, self._startstop_center_bin - self._stop_delta)
         # NOTE: tone width is halved -- it should be precise anyway
-        self._ss_tone_width = int(0.5 * 0.5 * (RADIOFAX_STOP_TONE - RADIOFAX_IOC576_START_TONE) / resolution)
+        self._ss_tone_width = int(
+            0.5 * 0.5 * (RADIOFAX_STOP_TONE - RADIOFAX_IOC576_START_TONE) / resolution)
         # Pixel output params
         samples_per_line = sample_rate * 60.0 / self._lpm
-        resample_factor = (samples_per_line / self._pixels_per_line) * self._line_scale_factor
+        resample_factor = (samples_per_line /
+                           self._pixels_per_line) * self._line_scale_factor
         self._resampler = Interpolator(resample_factor)
         logging.info("Resampling factor: %f", resample_factor)
         contrast = 0.01
         brightness = 0.02
         shift = 0.00
-        self._white_level = (2 * (RADIOFAX_WHITE_FREQ - RADIOFAX_STARTSTOP_FREQ) / sample_rate) - contrast - brightness + shift
-        self._black_level = (2 * (RADIOFAX_BLACK_FREQ - RADIOFAX_STARTSTOP_FREQ) / sample_rate) + contrast + shift
+        self._white_level = (2 * (RADIOFAX_WHITE_FREQ - RADIOFAX_STARTSTOP_FREQ) /
+                             sample_rate) - contrast - brightness + shift
+        self._black_level = (
+            2 * (RADIOFAX_BLACK_FREQ - RADIOFAX_STARTSTOP_FREQ) / sample_rate) + contrast + shift
         self._fc_factor = 2 * self._bin_size / sample_rate
 
     def _process_audio_samples(self, seq, samples, rssi):
         k = 1 / 32768.0
-        samples = [ x * k for x in samples ]
+        samples = [x * k for x in samples]
         samples = self._iqconverter.process(samples)
         self._process_samples(seq, samples, rssi)
 
     def _process_iq_samples(self, seq, samples, rssi, gps):
         k = 1 / 32768.0
-        samples = [ x * k for x in samples ]
+        samples = [x * k for x in samples]
         self._process_samples(seq, samples, rssi)
 
     def _process_samples(self, seq, samples, rssi):
@@ -451,19 +494,20 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
         if self._use_iq:
             P[0] = P[1]
         # Panoramize
-        P1 = P[len(P)//2:]
-        P1.extend(P[:len(P)//2])
+        P1 = P[len(P) // 2:]
+        P1.extend(P[:len(P) // 2])
         P = P1
         # DUMP POINT
         if self._options.dump_spectra and self._state != 'idle':
             dump_to_csv(self._output_name + '-ss.csv', P)
         # Assume noise floor is the median value + 5dB
-        Px = P[2048-425:2048+425]
+        Px = P[2048 - 425:2048 + 425]
         Psorted = sorted(Px)
         nf_level = Psorted[len(Psorted) // 2] + 5.0
         pk_level = Psorted[-1]
         peaks = peak_detect(P, nf_level + 10)
-        logging.info("Peaks: [%s]", ' '.join([ '%04d:%+05.1f' % (x[0], x[1]) for x in peaks ]))
+        logging.info("Peaks: [%s]", ' '.join(
+            ['%04d:%+05.1f' % (x[0], x[1]) for x in peaks]))
         # For each peak, test if it's the one around the start/stop middle freq
         # For 4096-wide FFT: W=981 B=640 S=810 Start576=[682,939], Stop=[618,1002]
         detect_startstop = False
@@ -498,9 +542,9 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
             self._startstop_score_update(detect_stop)
 
         logging.info("NF=%05.1f PK=%05.1f  TO=%+04d/%+06.2fHz SS=%02d %s%s%s%s%s",
-            nf_level, pk_level, self._tuning_offset, self._tuning_offset * self._bin_size,
-            self._startstop_score,
-            "sS"[detect_startstop], '-5'[detect_start576L], '-5'[detect_start576H], "xX"[detect_stopL], "xX"[detect_stopH])
+                     nf_level, pk_level, self._tuning_offset, self._tuning_offset * self._bin_size,
+                     self._startstop_score,
+                     "sS"[detect_startstop], '-5'[detect_start576L], '-5'[detect_start576H], "xX"[detect_stopL], "xX"[detect_stopH])
         # Decide
         if self._state == 'idle':
             if self._startstop_score >= 10:
@@ -537,7 +581,8 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
         for x in pixels:
             self._histoa.put(x)
         # Remap the detected region into [0,1)
-        pixels = array.array('f', mapper_df_to_intensity(pixels, self._black_level, self._white_level))
+        pixels = array.array('f', mapper_df_to_intensity(
+            pixels, self._black_level, self._white_level))
         for x in pixels:
             self._histob.put(x)
         # Scale and adjust pixel rate
@@ -573,13 +618,15 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
                 s += clamp(self._pixel_buffer[j], 0, 1)
             s /= phasing_pulse_size
             if s >= 0.85:
-                self._pixel_buffer = self._pixel_buffer[i + phasing_pulse_size * 3 // 4:]
+                self._pixel_buffer = self._pixel_buffer[i +
+                                                        phasing_pulse_size * 3 // 4:]
                 logging.info("Phasing OK")
                 self._switch_state('printing')
                 break
             i += 1
         else:
-            self._pixel_buffer = self._pixel_buffer[max(0, i - phasing_pulse_size):]
+            self._pixel_buffer = self._pixel_buffer[max(
+                0, i - phasing_pulse_size):]
 
     def _process_row(self, row):
         pixels = array.array('B')
@@ -599,7 +646,8 @@ class KiwiFax(kiwiclient.KiwiSDRStream):
         while True:
             with open(self._output_name + '.png', 'wb') as fp:
                 try:
-                    png.Writer(len(self._rows[0]), len(self._rows), greyscale=True).write(fp, self._rows)
+                    png.Writer(len(self._rows[0]), len(
+                        self._rows), greyscale=True).write(fp, self._rows)
                     break
                 except KeyboardInterrupt:
                     pass
@@ -613,7 +661,7 @@ KNOWN_CORRECTION_FACTORS = {
     'kiwisdr.northlandradio.nz:8073': {
         11030.00: -11.0,
     },
-    'travelx.org:8073': { # +7.0
+    'travelx.org:8073': {  # +7.0
         7795.00: +3.0,
         9165.00: -5.0,
         13988.50: +3.0,
@@ -640,6 +688,7 @@ KNOWN_CORRECTION_FACTORS = {
         16135.00: -13.0,
     }
 }
+
 
 def main():
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
@@ -711,9 +760,11 @@ def main():
     (options, unused_args) = parser.parse_args()
 
     # Setup logging
-    fmtr = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', '%Y%m%dT%H%MZ')
+    fmtr = logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s', '%Y%m%dT%H%MZ')
     fmtr.converter = time.gmtime
-    fh = logging.FileHandler('log_%s_%d_%d.log' % (options.server_host, options.server_port, int(options.frequency * 1000)))
+    fh = logging.FileHandler('log_%s_%d_%d.log' % (
+        options.server_host, options.server_port, int(options.frequency * 1000)))
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmtr)
     ch = logging.StreamHandler()
@@ -733,7 +784,8 @@ def main():
             coeffs = KNOWN_CORRECTION_FACTORS[server_identity]
             known_coeff = coeffs[options.frequency]
             options.sr_coeff = known_coeff
-            logging.info('Applying known correction %f for host %s', known_coeff, server_identity)
+            logging.info('Applying known correction %f for host %s',
+                         known_coeff, server_identity)
         except KeyError:
             pass
 

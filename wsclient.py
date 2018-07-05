@@ -54,7 +54,7 @@ def _format_host_header(host, port, secure):
     # (:) followed by the value of /port/, expressed as a base-ten integer,
     # to /hostport/
     if ((not secure and port != common.DEFAULT_WEB_SOCKET_PORT) or
-        (secure and port != common.DEFAULT_WEB_SOCKET_SECURE_PORT)):
+            (secure and port != common.DEFAULT_WEB_SOCKET_SECURE_PORT)):
         hostport += ':' + str(port)
     # 4.1 12. concatenation of the string "Host:", a U+0020 SPACE
     # character, and /hostport/, to /fields/.
@@ -108,7 +108,7 @@ def _validate_mandatory_header(fields, name,
     value = _get_mandatory_header(fields, name)
 
     if ((case_sensitive and value != expected_value) or
-        (not case_sensitive and value.lower() != expected_value.lower())):
+            (not case_sensitive and value.lower() != expected_value.lower())):
         raise ClientHandshakeError(
             'Illegal value for header %s: %r (expected) vs %r (actual)' %
             (name, expected_value, value))
@@ -205,11 +205,11 @@ def _get_permessage_deflate_framer(extension_response):
     client_no_context_takeover = None
 
     client_max_window_bits_name = (
-            PerMessageDeflateExtensionProcessor.
-                    _CLIENT_MAX_WINDOW_BITS_PARAM)
+        PerMessageDeflateExtensionProcessor.
+        _CLIENT_MAX_WINDOW_BITS_PARAM)
     client_no_context_takeover_name = (
-            PerMessageDeflateExtensionProcessor.
-                    _CLIENT_NO_CONTEXT_TAKEOVER_PARAM)
+        PerMessageDeflateExtensionProcessor.
+        _CLIENT_NO_CONTEXT_TAKEOVER_PARAM)
 
     # We didn't send any server_.* parameter.
     # Handle those parameters as invalid if found in the response.
@@ -218,23 +218,23 @@ def _get_permessage_deflate_framer(extension_response):
         if param_name == client_max_window_bits_name:
             if client_max_window_bits is not None:
                 raise ClientHandshakeError(
-                        'Multiple %s found' % client_max_window_bits_name)
+                    'Multiple %s found' % client_max_window_bits_name)
 
             parsed_value = _parse_window_bits(param_value)
             if parsed_value is None:
                 raise ClientHandshakeError(
-                        'Bad %s: %r' %
-                        (client_max_window_bits_name, param_value))
+                    'Bad %s: %r' %
+                    (client_max_window_bits_name, param_value))
             client_max_window_bits = parsed_value
         elif param_name == client_no_context_takeover_name:
             if client_no_context_takeover is not None:
                 raise ClientHandshakeError(
-                        'Multiple %s found' % client_no_context_takeover_name)
+                    'Multiple %s found' % client_no_context_takeover_name)
 
             if param_value is not None:
                 raise ClientHandshakeError(
-                        'Bad %s: Has value %r' %
-                        (client_no_context_takeover_name, param_value))
+                    'Bad %s: Has value %r' %
+                    (client_no_context_takeover_name, param_value))
             client_no_context_takeover = True
 
     if client_no_context_takeover is None:
@@ -269,7 +269,8 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
         """
 
         request_line = _build_method_line(resource)
-        self._logger.debug('Client\'s opening handshake Request-Line: %r', request_line)
+        self._logger.debug(
+            'Client\'s opening handshake Request-Line: %r', request_line)
 
         fields = []
         fields.append(_format_host_header(self._host, self._port, False))
@@ -280,29 +281,37 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
 
         original_key = os.urandom(16)
         self._key = base64.b64encode(original_key)
-        self._logger.debug('%s: %r (%s)', common.SEC_WEBSOCKET_KEY_HEADER, self._key, util.hexify(original_key))
-        fields.append('%s: %s\r\n' % (common.SEC_WEBSOCKET_KEY_HEADER, self._key.decode()))
-        fields.append('%s: %d\r\n' % (common.SEC_WEBSOCKET_VERSION_HEADER, common.VERSION_HYBI_LATEST))
+        self._logger.debug('%s: %r (%s)', common.SEC_WEBSOCKET_KEY_HEADER,
+                           self._key, util.hexify(original_key))
+        fields.append('%s: %s\r\n' %
+                      (common.SEC_WEBSOCKET_KEY_HEADER, self._key.decode()))
+        fields.append('%s: %d\r\n' % (
+            common.SEC_WEBSOCKET_VERSION_HEADER, common.VERSION_HYBI_LATEST))
         extensions_to_request = []
 
         if self._deflate_frame:
-            extensions_to_request.append(common.ExtensionParameter(common.DEFLATE_FRAME_EXTENSION))
+            extensions_to_request.append(
+                common.ExtensionParameter(common.DEFLATE_FRAME_EXTENSION))
 
         if self._use_permessage_deflate:
-            extension = common.ExtensionParameter(common.PERMESSAGE_DEFLATE_EXTENSION)
+            extension = common.ExtensionParameter(
+                common.PERMESSAGE_DEFLATE_EXTENSION)
             # Accept the client_max_window_bits extension parameter by default.
-            extension.add_parameter(PerMessageDeflateExtensionProcessor._CLIENT_MAX_WINDOW_BITS_PARAM, None)
+            extension.add_parameter(
+                PerMessageDeflateExtensionProcessor._CLIENT_MAX_WINDOW_BITS_PARAM, None)
             extensions_to_request.append(extension)
 
         if len(extensions_to_request) != 0:
-            fields.append('%s: %s\r\n' % (common.SEC_WEBSOCKET_EXTENSIONS_HEADER, common.format_extensions(extensions_to_request)))
+            fields.append('%s: %s\r\n' % (common.SEC_WEBSOCKET_EXTENSIONS_HEADER,
+                                          common.format_extensions(extensions_to_request)))
 
         self._socket.sendall(request_line)
         for field in fields:
             self._socket.sendall(field.encode())
         self._socket.sendall(b'\r\n')
 
-        self._logger.debug('Sent client\'s opening handshake headers: %r', fields)
+        self._logger.debug(
+            'Sent client\'s opening handshake headers: %r', fields)
         self._logger.debug('Start reading Status-Line')
 
         status_line = ''
@@ -314,11 +323,14 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
 
         m = re.match('HTTP/\\d+\.\\d+ (\\d\\d\\d) .*\r\n', status_line)
         if m is None:
-            raise ClientHandshakeError('Wrong status line format: %r' % status_line)
+            raise ClientHandshakeError(
+                'Wrong status line format: %r' % status_line)
         status_code = m.group(1)
         if status_code != '101':
-            self._logger.debug('Unexpected status code %s with following headers: %r', status_code, self._read_fields())
-            raise ClientHandshakeError('Expected HTTP status code 101 but found %r' % status_code)
+            self._logger.debug(
+                'Unexpected status code %s with following headers: %r', status_code, self._read_fields())
+            raise ClientHandshakeError(
+                'Expected HTTP status code 101 but found %r' % status_code)
 
         self._logger.debug('Received valid Status-Line')
         self._logger.debug('Start reading headers until we see an empty line')
@@ -334,10 +346,13 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
         self._logger.debug('Received an empty line')
         self._logger.debug('Server\'s opening handshake headers: %r', fields)
 
-        _validate_mandatory_header(fields, common.UPGRADE_HEADER, common.WEBSOCKET_UPGRADE_TYPE, False)
-        _validate_mandatory_header(fields, common.CONNECTION_HEADER, common.UPGRADE_CONNECTION_TYPE, False)
+        _validate_mandatory_header(
+            fields, common.UPGRADE_HEADER, common.WEBSOCKET_UPGRADE_TYPE, False)
+        _validate_mandatory_header(
+            fields, common.CONNECTION_HEADER, common.UPGRADE_CONNECTION_TYPE, False)
 
-        accept = _get_mandatory_header(fields, common.SEC_WEBSOCKET_ACCEPT_HEADER)
+        accept = _get_mandatory_header(
+            fields, common.SEC_WEBSOCKET_ACCEPT_HEADER)
         # Validate
         try:
             binary_accept = base64.b64decode(accept)
@@ -351,9 +366,11 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
                 'Decoded value of %s is not 20-byte long' %
                 common.SEC_WEBSOCKET_ACCEPT_HEADER)
 
-        self._logger.debug('Response for challenge : %r (%s)', accept, util.hexify(binary_accept))
+        self._logger.debug('Response for challenge : %r (%s)',
+                           accept, util.hexify(binary_accept))
 
-        binary_expected_accept = util.sha1_hash(self._key + common.WEBSOCKET_ACCEPT_UUID.encode()).digest()
+        binary_expected_accept = util.sha1_hash(
+            self._key + common.WEBSOCKET_ACCEPT_UUID.encode()).digest()
         expected_accept = base64.b64encode(binary_expected_accept)
         self._logger.debug(
             'Expected response for challenge: %r (%s)',
@@ -367,7 +384,8 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
         deflate_frame_accepted = False
         permessage_deflate_accepted = False
 
-        extensions_header = fields.get(common.SEC_WEBSOCKET_EXTENSIONS_HEADER.lower())
+        extensions_header = fields.get(
+            common.SEC_WEBSOCKET_EXTENSIONS_HEADER.lower())
         accepted_extensions = []
         if extensions_header is not None and len(extensions_header) != 0:
             accepted_extensions = common.parse_extensions(extensions_header[0])
@@ -388,12 +406,15 @@ class ClientHandshakeProcessor(ClientHandshakeBase):
                 self._use_permessage_deflate = framer
                 continue
 
-            raise ClientHandshakeError('Unexpected extension %r' % extension_name)
+            raise ClientHandshakeError(
+                'Unexpected extension %r' % extension_name)
 
         if (self._deflate_frame and not deflate_frame_accepted):
-            raise ClientHandshakeError('Requested %s, but the server rejected it' % common.DEFLATE_FRAME_EXTENSION)
+            raise ClientHandshakeError(
+                'Requested %s, but the server rejected it' % common.DEFLATE_FRAME_EXTENSION)
         if (self._use_permessage_deflate and not permessage_deflate_accepted):
-            raise ClientHandshakeError('Requested %s, but the server rejected it' % common.PERMESSAGE_DEFLATE_EXTENSION)
+            raise ClientHandshakeError(
+                'Requested %s, but the server rejected it' % common.PERMESSAGE_DEFLATE_EXTENSION)
 
         # TODO(tyoshino): Handle Sec-WebSocket-Protocol
         # TODO(tyoshino): Handle Cookie, etc.
@@ -429,5 +450,3 @@ class ClientRequest(object):
 
         self._socket = socket
         self.connection = ClientConnection(socket)
-
-

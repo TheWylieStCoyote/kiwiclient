@@ -34,9 +34,9 @@ stepSizeTable = (
 
 indexAdjustTable = [
     -1, -1, -1, -1,  # +0 - +3, decrease the step size
-     2, 4, 6, 8,     # +4 - +7, increase the step size
+    2, 4, 6, 8,     # +4 - +7, increase the step size
     -1, -1, -1, -1,  # -0 - -3, decrease the step size
-     2, 4, 6, 8      # -4 - -7, increase the step size
+    2, 4, 6, 8      # -4 - -7, increase the step size
 ]
 
 
@@ -47,6 +47,7 @@ def clamp(x, xmin, xmax):
         return xmax
     return x
 
+
 class ImaAdpcmDecoder(object):
     def __init__(self):
         self.index = 0
@@ -54,22 +55,23 @@ class ImaAdpcmDecoder(object):
 
     def _decode_sample(self, code):
         step = stepSizeTable[self.index]
-        self.index = clamp(self.index + indexAdjustTable[code], 0, len(stepSizeTable) - 1)
+        self.index = clamp(
+            self.index + indexAdjustTable[code], 0, len(stepSizeTable) - 1)
         difference = step >> 3
-        if ( code & 1 ):
+        if (code & 1):
             difference += step >> 2
-        if ( code & 2 ):
+        if (code & 2):
             difference += step >> 1
-        if ( code & 4 ):
+        if (code & 4):
             difference += step
-        if ( code & 8 ):
+        if (code & 8):
             difference = -difference
         sample = clamp(self.prev + difference, -32768, 32767)
         self.prev = sample
         return sample
 
     def decode(self, data):
-        fcn = ord if isinstance(data, str) else lambda x : x
+        fcn = ord if isinstance(data, str) else lambda x: x
         samples = array.array('h')
         for b in map(fcn, data):
             sample0 = self._decode_sample(b & 0x0F)
@@ -82,14 +84,22 @@ class ImaAdpcmDecoder(object):
 # KiwiSDR WebSocket client
 #
 
+
 class KiwiError(Exception):
     pass
+
+
 class KiwiTooBusyError(KiwiError):
     pass
+
+
 class KiwiDownError(KiwiError):
     pass
+
+
 class KiwiBadPasswordError(KiwiError):
     pass
+
 
 class KiwiSDRStreamBase(object):
     """KiwiSDR WebSocket stream base client."""
@@ -116,8 +126,9 @@ class KiwiSDRStreamBase(object):
         from mod_pywebsocket.stream import Stream
         from mod_pywebsocket.stream import StreamOptions
 
-        self._stream_name = which;
-        self._socket = socket.create_connection(address=(host, port), timeout=self._options.socket_timeout)
+        self._stream_name = which
+        self._socket = socket.create_connection(
+            address=(host, port), timeout=self._options.socket_timeout)
         uri = '/%d/%s' % (int(time.time()), which)
         handshake = wsclient.ClientHandshakeProcessor(self._socket, host, port)
         handshake.handshake(uri)
@@ -167,7 +178,7 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         self._version_minor = None
         self._modulation = None
         self._compression = True
-        self._gps_pos = [0,0]
+        self._gps_pos = [0, 0]
 
     def connect(self, host, port):
         self._prepare_stream(host, port, 'W/F' if self._isWF else 'SND')
@@ -175,10 +186,12 @@ class KiwiSDRStream(KiwiSDRStreamBase):
     def set_mod(self, mod, lc, hc, freq):
         mod = mod.lower()
         self._modulation = mod
-        self._send_message('SET mod=%s low_cut=%d high_cut=%d freq=%.3f' % (mod, lc, hc, freq))
+        self._send_message(
+            'SET mod=%s low_cut=%d high_cut=%d freq=%.3f' % (mod, lc, hc, freq))
 
     def set_agc(self, on=False, hang=False, thresh=-100, slope=6, decay=1000, gain=50):
-        self._send_message('SET agc=%d hang=%d thresh=%d slope=%d decay=%d manGain=%d' % (on, hang, thresh, slope, decay, gain))
+        self._send_message('SET agc=%d hang=%d thresh=%d slope=%d decay=%d manGain=%d' % (
+            on, hang, thresh, slope, decay, gain))
 
     def set_squelch(self, sq, thresh):
         self._send_message('SET squelch=%d max=%d' % (sq, thresh))
@@ -200,11 +213,11 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         self._send_message('SET maxdb=%d mindb=%d' % (maxdb, mindb))
 
     def _set_snd_comp(self, comp):
-        self._compression = comp;
+        self._compression = comp
         self._send_message('SET compression=%d' % (1 if comp else 0))
 
     def _set_wf_comp(self, comp):
-        self._compression = comp;
+        self._compression = comp
         self._send_message('SET wf_comp=%d' % (1 if comp else 0))
 
     def _set_wf_speed(self, wf_speed):
@@ -214,11 +227,14 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         if name == 'load_cfg':
             logging.info("load_cfg: (cfg info not printed)")
             d = json.loads(urllib.unquote(value.decode()))
-            self._gps_pos = [float(x) for x in urllib.unquote(d['rx_gps'])[1:-1].split(",")]
-            print("GNSS position: lat,lon=[%+6.2f, %+7.2f]" % (self._gps_pos[0], self._gps_pos[1]))
+            self._gps_pos = [float(x) for x in urllib.unquote(
+                d['rx_gps'])[1:-1].split(",")]
+            print("GNSS position: lat,lon=[%+6.2f, %+7.2f]" %
+                  (self._gps_pos[0], self._gps_pos[1]))
             self._on_gnss_position(self._gps_pos)
         else:
-            logging.debug("recv MSG (%s) %s: %s", self._stream_name, name, value)
+            logging.debug("recv MSG (%s) %s: %s",
+                          self._stream_name, name, value)
         # Handle error conditions
         if name == 'too_busy':
             raise KiwiTooBusyError('all %s client slots taken' % value)
@@ -248,11 +264,13 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         elif name == 'version_maj':
             self._version_major = value
             if self._version_major is not None and self._version_minor is not None:
-                logging.info("Server version: %s.%s", self._version_major, self._version_minor)
+                logging.info("Server version: %s.%s",
+                             self._version_major, self._version_minor)
         elif name == 'version_min':
             self._version_minor = value
             if self._version_major is not None and self._version_minor is not None:
-                logging.info("Server version: %s.%s", self._version_major, self._version_minor)
+                logging.info("Server version: %s.%s",
+                             self._version_major, self._version_minor)
 
     def _process_message(self, tag, body):
         if tag == 'MSG':
@@ -287,11 +305,13 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         data = body[6:]
         rssi = (smeter & 0x0FFF) // 10 - 127
         if self._modulation == 'iq':
-            gps = dict(zip(['last_gps_solution', 'dummy', 'gpssec', 'gpsnsec'], struct.unpack('<BBII', buffer(data[0:10]))))
+            gps = dict(zip(['last_gps_solution', 'dummy', 'gpssec',
+                            'gpsnsec'], struct.unpack('<BBII', buffer(data[0:10]))))
             data = data[10:]
             count = len(data) // 2
-            samples = np.ndarray(count, dtype='>h', buffer=data).astype(np.float32)
-            cs      = np.ndarray(count//2, dtype=np.complex64)
+            samples = np.ndarray(
+                count, dtype='>h', buffer=data).astype(np.float32)
+            cs = np.ndarray(count // 2, dtype=np.complex64)
             cs.real = samples[0:count:2]
             cs.imag = samples[1:count:2]
             self._process_iq_samples(seq, cs, rssi, gps)
@@ -300,7 +320,8 @@ class KiwiSDRStream(KiwiSDRStreamBase):
                 samples = self._decoder.decode(data)
             else:
                 count = len(data) // 2
-                samples = np.ndarray(count, dtype='>h', buffer=data).astype(np.int16)
+                samples = np.ndarray(
+                    count, dtype='>h', buffer=data).astype(np.int16)
             self._process_audio_samples(seq, samples, rssi)
 
     def _process_wf(self, body):
@@ -308,13 +329,13 @@ class KiwiSDRStream(KiwiSDRStreamBase):
         flags_x_zoom_server = struct.unpack('<I', buffer(body[4:8]))[0]
         seq = struct.unpack('<I', buffer(body[8:12]))[0]
         data = body[12:]
-        #print "W/F seq %d len %d" % (seq, len(data))
+        # print "W/F seq %d len %d" % (seq, len(data))
         if self._compression:
             self._decoder.__init__()   # reset decoder each sample
             samples = self._decoder.decode(data)
-            samples = samples[:len(samples)-10]   # remove decompression tail
+            samples = samples[:len(samples) - 10]   # remove decompression tail
         else:
-            fcn = ord if isinstance(data, str) else lambda x : x
+            fcn = ord if isinstance(data, str) else lambda x: x
             samples = array.array('h')
             for b in map(fcn, data):
                 samples.append(b)
